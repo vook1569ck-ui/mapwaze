@@ -1,4 +1,7 @@
-# MapWaze — Icon path fix
+# مابويز — تحديث الملاحة للعراق
 
-Upload the contents of this ZIP to the root of the existing `mapwaze` GitHub repository.
-Replace `index.html`, `manifest.webmanifest`, and `sw.js` when prompted. Keep `icon-192.png` and `icon-512.png` in the repository root; this version is configured to use them there, so no `icons` folder is needed.
+ارفع محتويات هذا الملف إلى جذر مستودع `mapwaze` في GitHub، ثم اختر Commit changes. وافق على استبدال `index.html` و`manifest.webmanifest` و`sw.js` عند الطلب.
+
+يتضمن هذا الإصدار بحثاً موجهاً للعراق، حساب مسار قيادة تقريبياً عند توفر الخدمة، عرض تعليمات المسار وقراءتها صوتياً، وأيقونات PWA في جذر المستودع.
+
+ملاحظات: هذه نسخة تجريبية. لا تتوفر حركة مرور حيّة، ولا تضمن خدمات البحث والمسارات العامة التوفر الدائم أو دقة جميع الطرق. لا تستخدم الهاتف أثناء القيادة؛ جهّز المسار قبل الانطلاق.

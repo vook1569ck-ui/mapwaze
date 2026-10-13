@@ -4,6 +4,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#062c35">
+<meta name="description" content="مابويز — بحث ومسارات تجريبية في جميع أنحاء العراق">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="مابويز">
+<link rel="manifest" href="./manifest.webmanifest">
+<link rel="apple-touch-icon" href="./icon-192.png">
 <meta name="description" content="مابويز — خريطة وملاحة تجريبية داخل العراق">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -33,7 +39,9 @@ button{font:inherit;cursor:pointer;border:0}
 .bottom{position:absolute;z-index:500;bottom:calc(env(safe-area-inset-bottom) + 12px);left:12px;right:12px;background:white;border-radius:22px;padding:13px;box-shadow:var(--shadow)}
 .bottomrow{display:flex;align-items:center;gap:9px}.routeinfo{flex:1;min-width:0}.route-title{font-weight:800;font-size:15px}.route-sub{font-size:12px;color:var(--muted);margin-top:4px;line-height:1.4}
 .reportbtn{background:#fff0e7;color:#a84a17;border-radius:13px;padding:12px 13px;font-weight:750;white-space:nowrap}
-.smallrow{display:flex;gap:7px;margin-top:11px}.secondary{background:#f0f6f5;color:#21434a;border-radius:11px;padding:10px 12px;font-size:12px;font-weight:700;flex:1}
+.smallrow{display:flex;gap:7px;margin-top:11px}
+.route-steps{display:none;margin-top:10px;max-height:145px;overflow:auto;border-top:1px solid var(--line);padding-top:8px;font-size:12px;line-height:1.7;color:var(--ink)}
+.route-steps ol{margin:4px 0;padding-right:20px}.route-steps li{margin:3px 0}.navbtn{background:#062c35;color:#fff;border-radius:11px;padding:10px 12px;font-size:12px;font-weight:750;flex:1}.secondary{background:#f0f6f5;color:#21434a;border-radius:11px;padding:10px 12px;font-size:12px;font-weight:700;flex:1}
 .badge{display:inline-flex;align-items:center;gap:5px;color:#087e72;font-weight:750;font-size:11px;margin-top:7px}
 .sheetback{display:none;position:absolute;inset:0;z-index:1000;background:#001c2280;align-items:flex-end}
 .sheet{background:white;width:100%;border-radius:24px 24px 0 0;padding:22px 18px calc(env(safe-area-inset-bottom) + 18px);box-shadow:var(--shadow)}
@@ -77,6 +85,11 @@ button{font:inherit;cursor:pointer;border:0}
     <button class="secondary" id="shareBtn">مشاركة موقعي</button>
     <button class="secondary" id="centerBtn">عرض العراق</button>
   </div>
+  <div class="smallrow">
+    <button class="navbtn" id="voiceBtn">🔊 اقرأ تعليمات المسار</button>
+    <button class="secondary" id="stopVoiceBtn">إيقاف الصوت</button>
+  </div>
+  <div class="route-steps" id="routeSteps"></div>
 </div>
 <div class="sheetback" id="sheetBack">
   <div class="sheet">
@@ -144,7 +157,8 @@ button{font:inherit;cursor:pointer;border:0}
     if(!q){toast('اكتب اسم المكان أو العنوان أولاً.');return;}
     say('جاري البحث عن الوجهة…',true);
     try {
-      const url='https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&countrycodes=iq&accept-language=ar&q='+encodeURIComponent(q);
+      const searchQuery = /العراق|iraq/i.test(q) ? q : q + ' العراق';
+      const url='https://nominatim.openstreetmap.org/search?format=jsonv2&limit=5&countrycodes=iq&accept-language=ar&q='+encodeURIComponent(searchQuery);
       const r=await fetch(url,{headers:{'Accept':'application/json'}});
       if(!r.ok) throw new Error('تعذر البحث حالياً.');
       const data=await r.json();
@@ -155,6 +169,36 @@ button{font:inherit;cursor:pointer;border:0}
       else map.setView(ll,14);
       say('تم العثور على الوجهة.');
     } catch(e) {say(e.message || 'حدث خطأ أثناء البحث.');}
+  }
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  }
+  function formatDistance(m) {
+    return m >= 1000 ? (m/1000).toFixed(1)+' كم' : Math.round(m)+' م';
+  }
+  function arabicInstruction(m, road) {
+    const type = m && m.type || 'continue';
+    const mod = m && m.modifier || '';
+    const name = road ? ' باتجاه '+road : '';
+    const turns = {
+      'uturn':'استدر للخلف',
+      'sharp right':'انعطف يميناً بشكل حاد',
+      'right':'انعطف يميناً',
+      'slight right':'اتجه قليلاً إلى اليمين',
+      'straight':'واصل السير إلى الأمام',
+      'slight left':'اتجه قليلاً إلى اليسار',
+      'left':'انعطف يساراً',
+      'sharp left':'انعطف يساراً بشكل حاد'
+    };
+    if(type==='depart') return 'ابدأ السير'+name;
+    if(type==='arrive') return 'لقد وصلت إلى الوجهة';
+    if(type==='roundabout' || type==='rotary') return 'ادخل الدوار ثم اتبع المخرج المحدد'+name;
+    if(type==='merge') return 'اندمج مع الطريق'+name;
+    if(type==='fork') return 'خذ التفرع '+(turns[mod]||'المناسب')+name;
+    if(type==='off ramp') return 'اخرج من الطريق'+name;
+    if(type==='on ramp') return 'اصعد إلى الطريق'+name;
+    if(type==='turn' || type==='end of road' || type==='new name') return (turns[mod]||'واصل السير')+name;
+    return 'واصل السير'+name;
   }
   async function route(dest) {
     if(!current) {
@@ -173,9 +217,19 @@ button{font:inherit;cursor:pointer;border:0}
       if(routeLayer) map.removeLayer(routeLayer);
       routeLayer=L.polyline(points,{color:'#00a99d',weight:6,opacity:.9}).addTo(map);
       const km=(best.distance/1000).toFixed(1), mins=Math.round(best.duration/60);
-      $('routeSub').textContent=`المسافة ${km} كم • وقت تقريبي ${mins} دقيقة. لا تتوفر بيانات ازدحام حي حالياً.`;
-      map.fitBounds(routeLayer.getBounds(),{paddingTopLeft:[25,180],paddingBottomRight:[25,210],maxZoom:15});
-      say('تم حساب المسار التقريبي.');
+      const steps=(best.legs||[]).flatMap(leg=>leg.steps||[]).map(step=>({
+        instruction: arabicInstruction(step.maneuver, step.name),
+        distance: step.distance || 0
+      })).filter(step=>step.distance>8);
+      window.mapwazeSteps = steps;
+      const list=$('routeSteps');
+      if(steps.length){
+        list.innerHTML='<strong>تعليمات الطريق</strong><ol>'+steps.slice(0,35).map(s=>'<li>'+escapeHtml(s.instruction)+' — '+formatDistance(s.distance)+'</li>').join('')+'</ol>';
+        list.style.display='block';
+      } else { list.style.display='none'; }
+      $('routeSub').textContent=`المسافة ${km} كم • وقت تقريبي ${mins} دقيقة. الوقت تقديري ولا يتضمن الازدحام الحي.`;
+      map.fitBounds(routeLayer.getBounds(),{paddingTopLeft:[25,180],paddingBottomRight:[25,260],maxZoom:15});
+      say('تم حساب المسار. يمكنك قراءة التعليمات الصوتية من الزر أدناه.');
     } catch(e) {
       $('routeSub').textContent=e.message+' يمكنك استخدام الخريطة لتحديد الوجهة.';
       say(e.message);
@@ -188,7 +242,7 @@ button{font:inherit;cursor:pointer;border:0}
   $('clearBtn').addEventListener('click',()=>{
     if(destinationMarker)map.removeLayer(destinationMarker);
     if(routeLayer)map.removeLayer(routeLayer);
-    destinationMarker=null;routeLayer=null;destinationName='';
+    destinationMarker=null;routeLayer=null;destinationName='';window.mapwazeSteps=[];$('routeSteps').style.display='none';if('speechSynthesis' in window)window.speechSynthesis.cancel();
     $('routeTitle').textContent='جاهز للانطلاق؟';
     $('routeSub').textContent='ابحث عن مكان أو اضغط مطولاً على الخريطة لاختيار وجهة.';
     say('تم مسح المسار.');
@@ -205,6 +259,20 @@ button{font:inherit;cursor:pointer;border:0}
     $('sheetBack').style.display='none';
     toast('تمت إضافة البلاغ على هذا الجهاز فقط.');
   }));
+  $('voiceBtn').addEventListener('click',()=>{
+    const steps=window.mapwazeSteps||[];
+    if(!steps.length){toast('حدد وجهة واحسب المسار أولاً.');return;}
+    if(!('speechSynthesis' in window)){toast('القراءة الصوتية غير مدعومة في هذا المتصفح.');return;}
+    window.speechSynthesis.cancel();
+    const text=steps.slice(0,35).map((s,i)=>`${i+1}. ${s.instruction} بعد ${formatDistance(s.distance)}`).join('. ');
+    const utterance=new SpeechSynthesisUtterance(text);
+    utterance.lang='ar-IQ'; utterance.rate=0.9;
+    window.speechSynthesis.speak(utterance);
+  });
+  $('stopVoiceBtn').addEventListener('click',()=>{
+    if('speechSynthesis' in window) window.speechSynthesis.cancel();
+    toast('تم إيقاف القراءة الصوتية.');
+  });
   $('shareBtn').addEventListener('click',async()=>{
     if(!current){await locate();if(!current)return;}
     const url=`https://www.google.com/maps?q=${current[0]},${current[1]}`;
@@ -222,5 +290,6 @@ if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js').catch(() => {}));
 }
 </script>
+<script>if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js").catch(()=>{}));}</script>
 </body>
 </html>
