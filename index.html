@@ -4,6 +4,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#062c35">
+<meta name="description" content="مابويز — خريطة وملاحة تجريبية داخل العراق">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="مابويز">
+<link rel="manifest" href="./manifest.webmanifest">
+<link rel="apple-touch-icon" href="./icons/icon-192.png">
 <title>مابويز | ملاحتك داخل العراق</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
 <style>
@@ -210,6 +216,11 @@ button{font:inherit;cursor:pointer;border:0}
   // Attempt to get a location once the page loads. Browser asks permission.
   setTimeout(()=>{if(navigator.geolocation)locate();},700);
 })();
+</script>
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js').catch(() => {}));
+}
 </script>
 </body>
 </html>
