@@ -20,6 +20,7 @@
  <div class="brand"><div class="logo">م</div><div><h1>ماب وايز العراق</h1><small>خريطة • مسارات • إرشادات صوتية</small></div><div style="margin-right:auto"><span id="net" style="font-size:11px;color:var(--green)">● متصل</span></div></div>
  <div class="searchrow"><input id="destination" type="search" placeholder="ابحث عن مكان داخل العراق..." autocomplete="off"><button id="searchBtn" class="primary">بحث</button></div>
  <div class="status" id="status">اكتب وجهتك أو اضغط على الخريطة لتحديدها.</div>
+ <div style="display:flex;gap:8px;margin-top:6px"><button id="cloudBtn" class="small">☁️ إعداد البلاغات المشتركة</button><span id="cloudStatus" class="status" style="margin:0;align-self:center">غير مربوط بقاعدة بيانات</span></div>
 </header>
 <main class="mapwrap"><div id="map" class="map" role="application" aria-label="خريطة العراق"></div>
  <div class="floatbuttons"><button id="locateBtn" title="موقعي">📍 موقعي</button><button id="zoomBtn" title="إظهار العراق">🇮🇶 العراق</button><button id="shareBtn" title="مشاركة الموقع">↗ مشاركة</button></div>
@@ -34,7 +35,7 @@
  <div class="section" id="saved"><button id="savePlace" class="blue">☆ حفظ الوجهة الحالية</button><div id="savedList" class="reportlist">لا توجد أماكن محفوظة.</div></div>
  <div class="note">تنبيه: هذه نسخة تجريبية مجانية. الخرائط والبحث والمسارات تحتاج الإنترنت. البلاغات لا تُشارك تلقائياً مع بقية المستخدمين ولا توجد بيانات زحام مباشر حتى ربط خادم مشترك. لا تستخدم الهاتف بيدك أثناء القيادة.</div>
 </section>
-<div id="toast" class="toast"></div>
+<div id="cloudModal" style="display:none;position:fixed;inset:0;z-index:2000;background:#000b;padding:20px;overflow:auto"><div style="max-width:520px;margin:8vh auto;background:#18232e;border:1px solid #344655;border-radius:18px;padding:18px"><h2>ربط البلاغات المشتركة</h2><p style="color:#a8b5c1;font-size:13px;line-height:1.7">أدخل Project URL وPublishable key فقط. لا تدخل Secret key أو service_role.</p><label>Project URL</label><input id="sbUrl" dir="ltr" placeholder="https://xxxx.supabase.co" style="width:100%;padding:12px;margin:6px 0 12px;border-radius:10px;background:#101820;color:white"><label>Publishable key</label><input id="sbKey" dir="ltr" placeholder="sb_publishable_..." style="width:100%;padding:12px;margin:6px 0;border-radius:10px;background:#101820;color:white"><p style="font-size:12px;color:#ffd166">شغّل ملف supabase_setup.sql في SQL Editor قبل الربط.</p><div style="display:flex;gap:8px;margin-top:12px"><button id="saveCloud" class="primary">حفظ وربط</button><button id="closeCloud">إغلاق</button><button id="forgetCloud" class="danger">فصل</button></div></div></div><div id="toast" class="toast"></div>
 </div>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
 <script>
@@ -80,6 +81,26 @@ $('savedList').onclick=e=>{const b=e.target.closest('[data-saved]');if(!b)return
 document.querySelectorAll('[data-tab]').forEach(b=>b.onclick=()=>{document.querySelectorAll('[data-tab]').forEach(x=>x.classList.toggle('active',x===b));document.querySelectorAll('.section').forEach(x=>x.classList.toggle('active',x.id===b.dataset.tab));if(b.dataset.tab==='reports')renderReports();if(b.dataset.tab==='saved')renderSaved();});
 window.addEventListener('online',()=>{$('net').textContent='● متصل';$('net').style.color='var(--green)'});
 window.addEventListener('offline',()=>{$('net').textContent='● بلا إنترنت';$('net').style.color='var(--red)';say('أنت بلا إنترنت؛ الخرائط والبحث والمسارات تحتاج اتصالاً.')});
+
+const SB_URL_KEY='mapwaze-supabase-url', SB_KEY_KEY='mapwaze-supabase-publishable';
+function cloudConfig(){return {url:(localStorage.getItem(SB_URL_KEY)||'').replace(/\/+$/,''),key:localStorage.getItem(SB_KEY_KEY)||''}}
+function cloudReady(){const c=cloudConfig();return /^https:\/\/[a-z0-9-]+\.supabase\.co$/i.test(c.url)&&c.key.startsWith('sb_publishable_')}
+function cloudHeaders(extra={}){const c=cloudConfig();return {'apikey':c.key,'Authorization':'Bearer '+c.key,'Content-Type':'application/json',...extra}}
+function cloudLabel(s){$('cloudStatus').textContent=s}
+async function cloudFetch(path,opts={}){const c=cloudConfig();const r=await fetch(c.url+'/rest/v1/'+path,{...opts,headers:cloudHeaders(opts.headers||{})});if(!r.ok)throw Error('Supabase '+r.status);const t=await r.text();return t?JSON.parse(t):null}
+async function loadSharedReports(){if(!cloudReady()){cloudLabel('غير مربوط بقاعدة بيانات');return}try{const rows=await cloudFetch('road_reports?select=id,kind,lat,lng,created_at&created_at=gte.'+encodeURIComponent(new Date(Date.now()-86400000).toISOString())+'&order=created_at.desc&limit=200');window.sharedReports=rows;cloudLabel('● البلاغات المشتركة متصلة');if(window.sharedLayer)map.removeLayer(window.sharedLayer);window.sharedLayer=L.layerGroup();rows.forEach(x=>L.circleMarker([+x.lat,+x.lng],{radius:8,color:'#fff',weight:2,fillColor:x.kind==='حادث مروري'?'#ff626b':x.kind==='ازدحام'?'#ffd166':'#409cff',fillOpacity:.95}).bindPopup(escapeHtml(x.kind)+'<br><small>بلاغ مشترك</small>').addTo(window.sharedLayer));window.sharedLayer.addTo(map);renderReports()}catch(e){cloudLabel('تعذر الاتصال — راجع إعدادات Supabase');console.warn(e)}}
+async function sendSharedReport(x){if(!cloudReady())return;try{await cloudFetch('road_reports',{method:'POST',headers:{'Prefer':'return=minimal'},body:JSON.stringify({kind:x.type,lat:x.lat,lng:x.lng,created_at:x.time})});await loadSharedReports();pop('تم نشر البلاغ للجميع')}catch(e){pop('تعذر نشر البلاغ. تحقق من SQL وإعدادات المشروع');console.warn(e)}}
+$('cloudBtn').onclick=()=>{const c=cloudConfig();$('sbUrl').value=c.url;$('sbKey').value=c.key;$('cloudModal').style.display='block'};
+$('closeCloud').onclick=()=>$('cloudModal').style.display='none';
+$('saveCloud').onclick=async()=>{const u=$('sbUrl').value.trim().replace(/\/+$/,''),k=$('sbKey').value.trim();if(!/^https:\/\/[a-z0-9-]+\.supabase\.co$/i.test(u))return pop('رابط المشروع غير صحيح');if(!k.startsWith('sb_publishable_'))return pop('استخدم Publishable key الذي يبدأ بـ sb_publishable_');localStorage.setItem(SB_URL_KEY,u);localStorage.setItem(SB_KEY_KEY,k);$('cloudModal').style.display='none';cloudLabel('جارٍ اختبار الاتصال...');await loadSharedReports()};
+$('forgetCloud').onclick=()=>{localStorage.removeItem(SB_URL_KEY);localStorage.removeItem(SB_KEY_KEY);$('cloudModal').style.display='none';cloudLabel('غير مربوط بقاعدة بيانات')};
+const originalReportRender=renderReports;
+renderReports=function(){const local=read(REPORT_KEY);const shared=window.sharedReports||[];const items=[...shared.map(x=>({id:x.id,type:x.kind,lat:+x.lat,lng:+x.lng,time:x.created_at,shared:true})),...local.slice(-10).reverse()];$('reportCount').textContent=String(shared.length||local.length);$('reportList').innerHTML=items.length?items.map(x=>`<div class="step"><div class="num">!</div><div style="flex:1"><b>${escapeHtml(x.type)}</b><div>${new Date(x.time).toLocaleString('ar-IQ')} · ${x.lat.toFixed(4)}, ${x.lng.toFixed(4)} ${x.shared?'· مشترك':'· محلي'}</div></div><button class="small" data-open="${x.id}" data-lat="${x.lat}" data-lng="${x.lng}" data-kind="${escapeHtml(x.type)}">عرض</button></div>`).join(''):'لا توجد بلاغات بعد.'};
+$('reportList').onclick=e=>{const b=e.target.closest('[data-open]');if(!b)return;const lat=+b.dataset.lat,lng=+b.dataset.lng;map.setView([lat,lng],16);L.popup().setLatLng([lat,lng]).setContent(escapeHtml(b.dataset.kind)).openOn(map)};
+document.querySelectorAll('[data-report]').forEach(b=>{b.onclick=async()=>{let p=current;try{if(!p)p=await getCurrent()}catch(e){return pop('اسمح بالوصول للموقع قبل إرسال البلاغ')}const x={id:Date.now(),type:b.dataset.report,lat:p.lat,lng:p.lng,time:new Date().toISOString()};const a=read(REPORT_KEY);a.push(x);write(REPORT_KEY,a);renderReports();if(cloudReady())await sendSharedReport(x);else pop('حُفظ محلياً؛ اربط Supabase لمشاركته')}});
+$('clearReports').onclick=()=>{if(confirm('مسح البلاغات المحلية فقط؟ البلاغات المشتركة لا تُحذف من هنا.')){write(REPORT_KEY,[]);renderReports()}};
+if(cloudReady()){loadSharedReports();setInterval(loadSharedReports,60000)}
+
 renderReports();renderSaved();
 if('serviceWorker'in navigator&&location.protocol.startsWith('http'))window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(()=>{}));
 })();
