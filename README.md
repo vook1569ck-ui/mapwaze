@@ -1,17 +1,4 @@
-# مابويز | MapWaze — نسخة ويب قابلة للتثبيت
+# MapWaze — Icon path fix
 
-## تحديث GitHub Pages من الآيفون
-1. فك ضغط `MapWaze_PWA_Update.zip` في تطبيق الملفات.
-2. افتح مستودع `mapwaze` على GitHub ثم Code.
-3. اختر Add file → Upload files.
-4. ارفع الملفات والمجلدات الموجودة داخل هذا المجلد إلى جذر المستودع: `index.html` و`manifest.webmanifest` و`sw.js` ومجلد `icons`.
-5. اضغط Commit changes وانتظر حتى يكتمل GitHub Pages.
-
-## تثبيت على iPhone
-افتح رابط الموقع في Safari، ثم زر المشاركة → Add to Home Screen (إضافة إلى الشاشة الرئيسية).
-
-## ملاحظات
-- هذه نسخة ويب تجريبية وليست تطبيق App Store أو Google Play أصلياً.
-- تحتاج الإنترنت للخريطة والبحث والمسارات؛ التخزين المؤقت يحفظ هيكل الصفحة فقط ولا يوفر خرائط أو ملاحة كاملة دون اتصال.
-- البلاغات لا تزال محلية على الجهاز، ولا يوجد ازدحام حي أو مزامنة بين المستخدمين.
-- خدمات الخرائط والمسارات الخارجية لها حدود استخدام وقد تتغير.
+Upload the contents of this ZIP to the root of the existing `mapwaze` GitHub repository.
+Replace `index.html`, `manifest.webmanifest`, and `sw.js` when prompted. Keep `icon-192.png` and `icon-512.png` in the repository root; this version is configured to use them there, so no `icons` folder is needed.
