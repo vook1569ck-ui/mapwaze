@@ -1,25 +1,27 @@
 {
-  "id": "./",
-  "name": "مابويز | MapWaze",
-  "short_name": "مابويز",
-  "description": "ملاحتك والبحث عن الأماكن في جميع أنحاء العراق",
-  "lang": "ar",
+  "name": "ماب وايز العراق",
+  "short_name": "ماب وايز",
+  "description": "خريطة وملاحة للعراق",
+  "lang": "ar-IQ",
   "dir": "rtl",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
-  "background_color": "#edf4f3",
-  "theme_color": "#062c35",
+  "orientation": "portrait",
+  "background_color": "#101820",
+  "theme_color": "#101820",
   "icons": [
     {
       "src": "./icon-192.png",
       "sizes": "192x192",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any maskable"
     },
     {
       "src": "./icon-512.png",
       "sizes": "512x512",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any maskable"
     }
   ]
 }
